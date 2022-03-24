@@ -135,7 +135,7 @@ func (bc *Blockchain) PloofOfWork() int {
 	return nonce
 }
 
-func (bc *Blockchain) Minig() bool {
+func (bc *Blockchain) Mining() bool {
 	// transactionpoolに自分へのリワードを追加
 	bc.AddTransaction(MINIG_SENDER, bc.blockchainAddress, MINIG_REWARD)
 	nonce := bc.PloofOfWork()
@@ -143,6 +143,22 @@ func (bc *Blockchain) Minig() bool {
 	bc.CreateBlock(nonce, previousHash)
 	log.Println("action=mining, status=success")
 	return true
+}
+
+func (bc *Blockchain) CalculateTotalAmount(blockchainAddress string) float32 {
+	var totalamount float32 = 0.0
+	for _, b := range bc.chain {
+		for _, t := range b.transactions {
+			value := t.value
+			if blockchainAddress == t.recipientBlockchainAddress {
+				totalamount += value
+			}
+			if blockchainAddress == t.senderBlockchainAddress {
+				totalamount -= value
+			}
+		}
+	}
+	return totalamount
 }
 
 type Transaction struct {
@@ -190,7 +206,7 @@ func main() {
 	nonce := blockchain.PloofOfWork()
 	blockchain.CreateBlock(nonce, previousHash)
 	*/
-	blockchain.Minig()
+	blockchain.Mining()
 	blockchain.Print()
 
 	blockchain.AddTransaction("C", "D", 2.0)
@@ -200,6 +216,10 @@ func main() {
 	nonce = blockchain.PloofOfWork()
 	blockchain.CreateBlock(nonce, previousHash)
 	*/
-	blockchain.Minig()
+	blockchain.Mining()
 	blockchain.Print()
+
+	fmt.Printf("my %.1f\n", blockchain.CalculateTotalAmount("my_blockchain_address"))
+	fmt.Printf("C %.1f\n", blockchain.CalculateTotalAmount("C"))
+	fmt.Printf("D %.1f\n", blockchain.CalculateTotalAmount("D"))
 }
