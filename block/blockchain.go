@@ -1,6 +1,8 @@
 package block
 
 import (
+	"block/utils"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -100,9 +102,37 @@ func (bc *Blockchain) Print() {
 	fmt.Printf("%s\n", strings.Repeat("*", 25))
 }
 
-func (bc *Blockchain) AddTransaction(sender string, recipient string, value float32) {
+func (bc *Blockchain) AddTransaction(sender string, recipient string, value float32, senderPublicKey *ecdsa.PublicKey, s *utils.Signature) bool {
 	t := NewTransaction(sender, recipient, value)
-	bc.transactionPool = append(bc.transactionPool, t)
+
+	// マイニングの報酬を受け取るトランザクションの場合
+	if sender == MINIG_SENDER {
+		bc.transactionPool = append(bc.transactionPool, t)
+		return true
+	}
+
+	// トランザクションの署名が妥当な場合のみトランザクションを追加する
+	if bc.VerifyTransactionSignature(senderPublicKey, s, t) {
+		/*
+			if bc.CalculateTotalAmount(sender) < value {
+				log.Println("ERROR: Not enough balance in a wallet")
+				return false
+			}
+		*/
+		bc.transactionPool = append(bc.transactionPool, t)
+		return true
+	} else {
+		log.Println("ERROR: Verify Transaction")
+	}
+	return false
+
+}
+
+// トランザクションの署名の妥当性を検証
+func (bc *Blockchain) VerifyTransactionSignature(senderPubllicKey *ecdsa.PublicKey, s *utils.Signature, t *Transaction) bool {
+	m, _ := json.Marshal(t)
+	h := sha256.Sum256([]byte(m))
+	return ecdsa.Verify(senderPubllicKey, h[:], s.R, s.S)
 }
 
 func (bc *Blockchain) CopyTransactionPool() []*Transaction {
@@ -137,7 +167,7 @@ func (bc *Blockchain) PloofOfWork() int {
 
 func (bc *Blockchain) Mining() bool {
 	// transactionpoolに自分へのリワードを追加
-	bc.AddTransaction(MINIG_SENDER, bc.blockchainAddress, MINIG_REWARD)
+	bc.AddTransaction(MINIG_SENDER, bc.blockchainAddress, MINIG_REWARD, nil, nil)
 	nonce := bc.PloofOfWork()
 	previousHash := bc.LastBlock().Hash()
 	bc.CreateBlock(nonce, previousHash)
@@ -180,9 +210,9 @@ func (t *Transaction) Print() {
 
 func (t *Transaction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Sender    string  `json: "sender_blockchain_address"`
-		Recipient string  `json: "recipient_blockchain_address"`
-		Value     float32 `json: "value"`
+		Sender    string  `json:"sender_blockchain_address"`
+		Recipient string  `json:"recipient_blockchain_address"`
+		Value     float32 `json:"value"`
 	}{
 		Sender:    t.senderBlockchainAddress,
 		Recipient: t.recipientBlockchainAddress,
