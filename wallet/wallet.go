@@ -69,7 +69,7 @@ func NewWallet() *Wallet {
 	return w
 }
 
-// signatureはtransactionをPrivateKeyで暗号化することで取得
+// signatureはtransactionのjsonをPrivateKeyで暗号化することで取得
 
 func (w *Wallet) PrivateKey() *ecdsa.PrivateKey {
 	// 構造体全てを返す
@@ -89,7 +89,7 @@ func (w *Wallet) PublicKey() *ecdsa.PublicKey {
 func (w *Wallet) PublicKeyStr() string {
 	// publicKeyのstructにはx,y(パブリックキー)という要素が存在
 	// 人間が読みやすい文字列(16進数)に変換
-	return fmt.Sprintf("%x%x", w.publicKey.X.Bytes(), w.publicKey.Y.Bytes())
+	return fmt.Sprintf("%064x%064x", w.publicKey.X.Bytes(), w.publicKey.Y.Bytes())
 }
 
 func (w *Wallet) BlockchainAddress() string {

@@ -4,6 +4,7 @@ import (
 	"block/utils"
 	"block/wallet"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"log"
@@ -76,6 +77,24 @@ func (ws *WalletServer) CreateTransaction(w http.ResponseWriter, req *http.Reque
 			io.WriteString(w, string(utils.JsonStatus("fail")))
 			return
 		}
+
+		// PublicKeyFromStringは引数にstringを受け取るため、ポインタ型の変数の前に*をつけてstringの値を取り出す
+		// SenderPublicKeyはポインタ型(*string)
+		publicKey := utils.PublicKeyFromString(*t.SenderPublicKey)
+		privateKey := utils.PrivateKeyFromString(*t.SenderPrivateKey, publicKey)
+		value, err := strconv.ParseFloat(*t.Value, 32)
+		if err != nil {
+			log.Println("ERROR: parse error")
+			io.WriteString(w, string(utils.JsonStatus("fail")))
+			return
+		}
+		value32 := float32(value)
+
+		fmt.Println(publicKey)
+		fmt.Println(privateKey)
+		fmt.Printf("%.1f\n", value32)
+
+		// w.Header().Add("Content-Type", "application/json")
 		/*
 			fmt.Println(*t.SenderPublicKey)
 			fmt.Println(*t.SenderPrivateKey)
