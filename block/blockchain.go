@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -15,6 +16,7 @@ const (
 	MINIG_DIFFICULTY = 3
 	MINIG_SENDER     = "THE BLOCKCHAIN"
 	MINIG_REWARD     = 1.0
+	MINIG_TIMER_SEC  = 20
 )
 
 type Block struct {
@@ -70,6 +72,7 @@ type Blockchain struct {
 	blockchainAddress string
 	// GetBlockchain()の作成より追加
 	port uint16
+	mux  sync.Mutex
 }
 
 // ブロックチェーンの新規作成
@@ -188,6 +191,14 @@ func (bc *Blockchain) PloofOfWork() int {
 }
 
 func (bc *Blockchain) Mining() bool {
+	// Mining()関数の自動化対応
+	bc.mux.Lock()
+	defer bc.mux.Unlock()
+
+	if len(bc.transactionPool) == 0 {
+		return false
+	}
+
 	// transactionpoolに自分へのリワードを追加
 	bc.AddTransaction(MINIG_SENDER, bc.blockchainAddress, MINIG_REWARD, nil, nil)
 	nonce := bc.PloofOfWork()
@@ -195,6 +206,13 @@ func (bc *Blockchain) Mining() bool {
 	bc.CreateBlock(nonce, previousHash)
 	log.Println("action=mining, status=success")
 	return true
+}
+
+func (bc *Blockchain) StartMining() {
+	bc.Mining()
+	// 20秒後に再度StartMiningを呼び出す
+	_ = time.AfterFunc(time.Second*MINIG_TIMER_SEC, bc.StartMining)
+
 }
 
 func (bc *Blockchain) CalculateTotalAmount(blockchainAddress string) float32 {
