@@ -17,6 +17,12 @@ const (
 	MINIG_SENDER     = "THE BLOCKCHAIN"
 	MINIG_REWARD     = 1.0
 	MINIG_TIMER_SEC  = 20
+
+	BLOCKCHAIN_PORT_RANGE_START       = 5000
+	BLOCKCHAIN_PORT_RANGE_END         = 5003
+	NEIGHBOR_IP_RANGE_START           = 0
+	NEIGHBOR_IP_RANGE_END             = 1
+	BLOCKCHAIN_NEIGHBOR_SYNC_TIME_SEC = 20
 )
 
 type Block struct {
@@ -71,8 +77,14 @@ type Blockchain struct {
 	// (blockchainネットワークからの)報酬の送信先
 	blockchainAddress string
 	// GetBlockchain()の作成より追加
-	port uint16
-	mux  sync.Mutex
+	port         uint16
+	mux          sync.Mutex
+	neighbors    []string
+	muxNeighbors sync.Mutex
+}
+
+func (bc *Blockchain) Run() {
+	bc.StartSyncNeighbors()
 }
 
 // ブロックチェーンの新規作成
@@ -83,6 +95,25 @@ func NewBlockchain(blockchainAddrdess string, port uint16) *Blockchain {
 	bc.CreateBlock(0, b.Hash())
 	bc.port = port
 	return bc
+}
+
+func (bc *Blockchain) SetNeighbors() {
+	bc.neighbors = utils.FindNeighbors(
+		utils.GetHost(), bc.port,
+		NEIGHBOR_IP_RANGE_START, NEIGHBOR_IP_RANGE_END,
+		BLOCKCHAIN_PORT_RANGE_START, BLOCKCHAIN_PORT_RANGE_END)
+	log.Printf("%v", bc.neighbors)
+}
+
+func (bc *Blockchain) SyncNeighbors() {
+	bc.muxNeighbors.Lock()
+	defer bc.muxNeighbors.Unlock()
+	bc.SetNeighbors()
+}
+
+func (bc *Blockchain) StartSyncNeighbors() {
+	bc.SyncNeighbors()
+	_ = time.AfterFunc(time.Second*BLOCKCHAIN_NEIGHBOR_SYNC_TIME_SEC, bc.StartSyncNeighbors)
 }
 
 func (bc *Blockchain) TransactionPool() []*Transaction {
